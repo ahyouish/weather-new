@@ -56,7 +56,7 @@
   </div>
 
   <script>
-    const apiKey = "6e06eeceeac3901349534e8c9f29f845";
+    const apiKey = "1ec1a8428fecd108f63c14503def4e42";
     const canvas = document.getElementById('weatherCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
@@ -66,8 +66,6 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     });
-
-    let animationType = 'clear';
 
     function drawRain() {
       let drops = [];
@@ -86,15 +84,13 @@
         ctx.strokeStyle = 'rgba(174,194,224,0.5)';
         ctx.lineWidth = 1;
         ctx.lineCap = 'round';
-        for (let i = 0; i < drops.length; i++) {
-          let d = drops[i];
+        for (let d of drops) {
           ctx.beginPath();
           ctx.moveTo(d.x, d.y);
           ctx.lineTo(d.x + d.xs, d.y + d.l);
           ctx.stroke();
         }
-        for (let i = 0; i < drops.length; i++) {
-          let d = drops[i];
+        for (let d of drops) {
           d.y += d.ys;
           if (d.y > canvas.height) {
             d.y = -20;
@@ -110,9 +106,9 @@
       function animateSun() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.beginPath();
-        let centerX = canvas.width / 2;
-        let centerY = canvas.height / 2;
-        ctx.arc(centerX, centerY, 80, 0, Math.PI * 2);
+        const x = canvas.width / 2;
+        const y = canvas.height / 2;
+        ctx.arc(x, y, 80, 0, Math.PI * 2);
         ctx.fillStyle = 'gold';
         ctx.fill();
         requestAnimationFrame(animateSun);
@@ -140,40 +136,45 @@
       animateClouds();
     }
 
-    function setAnimation(weather) {
-      animationType = weather;
-      if (weather === 'Rain') drawRain();
-      else if (weather === 'Clear') drawSun();
+    function setAnimation(weatherType) {
+      if (weatherType === 'Rain') drawRain();
+      else if (weatherType === 'Clear') drawSun();
       else drawClouds();
     }
 
     async function getWeather() {
-      const city = document.getElementById("cityInput").value;
-      if (!city) return;
+      const city = document.getElementById("cityInput").value.trim();
+      if (!city) {
+        document.getElementById("weatherResult").innerText = "Please enter a city.";
+        return;
+      }
       localStorage.setItem("lastCity", city);
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`;
+
       try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.cod === 200) {
-          document.getElementById("weatherResult").innerText = `${data.name}: ${data.main.temp}°C, ${data.weather[0].main}`;
-          setAnimation(data.weather[0].main);
+        const response = await fetch(url);
+        const data = await response.json();
+        if (response.ok && data.weather) {
+          const name = data.name;
+          const temp = data.main.temp;
+          const condition = data.weather[0].main;
+          document.getElementById("weatherResult").innerText = `${name}: ${temp}°C, ${condition}`;
+          setAnimation(condition);
         } else {
-          document.getElementById("weatherResult").innerText = "City not found.";
+          document.getElementById("weatherResult").innerText = `City not found.`;
         }
       } catch (err) {
-        document.getElementById("weatherResult").innerText = "Error fetching data.";
+        document.getElementById("weatherResult").innerText = "Network error. Try again.";
       }
     }
 
-    // Load last city if available
     window.onload = () => {
       const lastCity = localStorage.getItem("lastCity");
       if (lastCity) {
         document.getElementById("cityInput").value = lastCity;
         getWeather();
       }
-    }
+    };
   </script>
 </body>
 </html>
